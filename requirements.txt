@@ -3,3 +3,5 @@ google-generativeai
 graphviz
 python-dateutil
 feedparser==6.0.10
+python-dotenv==1.0.0
+lxml==5.1.0

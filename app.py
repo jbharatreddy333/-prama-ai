@@ -84,6 +84,17 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
+    /* Category badges */
+    .category-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        margin: 1.5rem 0 1rem 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    
     /* Badge styling */
     .badge {
         display: inline-block;
@@ -106,6 +117,31 @@ st.markdown("""
     
     .badge-research {
         background: #3b82f6;
+        color: white;
+    }
+    
+    .badge-lawsuit {
+        background: #ef4444;
+        color: white;
+    }
+    
+    .badge-technology {
+        background: #8b5cf6;
+        color: white;
+    }
+    
+    .badge-hardware {
+        background: #06b6d4;
+        color: white;
+    }
+    
+    .badge-software {
+        background: #10b981;
+        color: white;
+    }
+    
+    .badge-stocks {
+        background: #f59e0b;
         color: white;
     }
     
@@ -223,7 +259,51 @@ class AIIntelligenceAgent:
             'OpenAI Blog': 'https://openai.com/blog/rss/',
             'The Batch (DeepLearning.AI)': 'https://www.deeplearning.ai/the-batch/feed/',
         }
+    
+    def categorize_article(self, article):
+        """Categorize article based on content"""
+        title = article.get('title', '').lower()
+        summary = article.get('summary', '').lower()
+        content = title + ' ' + summary
         
+        categories = []
+        
+        # Lawsuit detection
+        lawsuit_keywords = ['lawsuit', 'sue', 'suing', 'legal action', 'court', 'patent infringement', 
+                           'litigation', 'settlement', 'copyright', 'intellectual property']
+        if any(keyword in content for keyword in lawsuit_keywords):
+            categories.append('Lawsuits')
+        
+        # Hardware detection
+        hardware_keywords = ['chip', 'gpu', 'processor', 'hardware', 'nvidia', 'tpu', 'semiconductor',
+                           'h100', 'a100', 'data center', 'server', 'silicon']
+        if any(keyword in content for keyword in hardware_keywords):
+            categories.append('Hardware')
+        
+        # Software/Tools detection
+        software_keywords = ['api', 'sdk', 'framework', 'library', 'platform', 'application',
+                           'software', 'tool', 'plugin', 'integration', 'update', 'release']
+        if any(keyword in content for keyword in software_keywords):
+            categories.append('Software & Tools')
+        
+        # Stocks/Finance detection
+        stocks_keywords = ['stock', 'share', 'investment', 'funding', 'valuation', 'ipo', 
+                          'market cap', 'revenue', 'earnings', 'investor', 'venture capital']
+        if any(keyword in content for keyword in stocks_keywords):
+            categories.append('Stocks & Finance')
+        
+        # Technology/Research detection
+        tech_keywords = ['model', 'algorithm', 'research', 'paper', 'breakthrough', 'technique',
+                        'architecture', 'training', 'inference', 'benchmark', 'performance']
+        if any(keyword in content for keyword in tech_keywords):
+            categories.append('Technology & Research')
+        
+        # If no category matched, mark as General
+        if not categories:
+            categories.append('General')
+        
+        return categories
+    
     def collect_news(self, max_articles=20, date_range=None, company_filter=None):
         """Collect latest AI news from RSS feeds with date and company filtering"""
         
@@ -330,7 +410,7 @@ class AIIntelligenceAgent:
                     if 'hugging face' in title_lower or 'huggingface' in title_lower:
                         company_tags.append('Hugging Face')
                     
-                    all_articles.append({
+                    article = {
                         'source': source_name,
                         'title': entry.get('title', 'No title'),
                         'link': entry.get('link', '#'),
@@ -338,7 +418,12 @@ class AIIntelligenceAgent:
                         'published': entry.get('published', 'Unknown date'),
                         'date': article_date,
                         'companies': company_tags if company_tags else ['General'],
-                    })
+                    }
+                    
+                    # Categorize the article
+                    article['categories'] = self.categorize_article(article)
+                    
+                    all_articles.append(article)
                     
             except Exception as e:
                 st.warning(f"Could not fetch from {source_name}: {str(e)}")
@@ -349,223 +434,191 @@ class AIIntelligenceAgent:
         
         return all_articles[:max_articles]
     
-    def collect_tools(self, company_filter=None):
-        """Collect information about new AI tools, categorized by company"""
+    def collect_latest_models(self, company_filter=None):
+        """Collect information about latest AI model developments and releases"""
         
-        # Comprehensive AI tools database with company affiliations
-        all_tools = [
-            # OpenAI
+        # Latest AI models and developments (Updated regularly)
+        latest_models = [
+            # OpenAI - Latest Models
             {
-                'name': 'GPT-4 Turbo',
+                'name': 'GPT-4o (GPT-4 Omni)',
                 'company': 'OpenAI',
-                'category': 'LLM',
-                'description': 'Latest GPT-4 model with 128K context window and improved performance',
-                'use_case': 'Advanced text generation, code assistance, analysis',
-                'pricing': 'API-based',
-                'link': 'https://platform.openai.com/docs/models/gpt-4-turbo'
+                'release_date': 'May 2024',
+                'category': 'Multimodal LLM',
+                'description': 'Flagship multimodal model with vision, audio, and text capabilities',
+                'key_features': ['128K context', 'Native multimodal', 'Faster than GPT-4 Turbo', 'Better at vision and audio'],
+                'benchmarks': 'MMLU: 88.7%, HumanEval: 90.2%',
+                'pricing': 'API-based: $5/1M input, $15/1M output tokens',
+                'status': 'Production',
+                'link': 'https://openai.com/index/hello-gpt-4o/'
             },
+            {
+                'name': 'o1 & o1-mini',
+                'company': 'OpenAI',
+                'release_date': 'September 2024',
+                'category': 'Reasoning LLM',
+                'description': 'Advanced reasoning models that think before they answer',
+                'key_features': ['Chain-of-thought reasoning', 'PhD-level science', 'Complex problem solving', 'Math & coding excellence'],
+                'benchmarks': 'AIME 2024: 83% (vs 13% GPT-4o), Codeforces: 89th percentile',
+                'pricing': 'o1: $15/1M in, $60/1M out | o1-mini: $3/1M in, $12/1M out',
+                'status': 'Production',
+                'link': 'https://openai.com/o1/'
+            },
+            
+            # Google/Gemini - Latest Models
+            {
+                'name': 'Gemini 2.0 Flash',
+                'company': 'Google/Gemini',
+                'release_date': 'December 2024',
+                'category': 'Multimodal LLM',
+                'description': 'Next-generation thinking model with agentic capabilities',
+                'key_features': ['Multimodal input/output', 'Native tool use', 'Agentic behavior', '2x faster than 1.5'],
+                'benchmarks': 'MMLU-Pro: 75.1%, Math-500: 71.9%, HumanEval: 92.7%',
+                'pricing': 'Free tier available, API pricing competitive',
+                'status': 'Production',
+                'link': 'https://blog.google/technology/google-deepmind/google-gemini-ai-update-december-2024/'
+            },
+            {
+                'name': 'Gemini 1.5 Pro',
+                'company': 'Google/Gemini',
+                'release_date': 'February 2024',
+                'category': 'Long-Context LLM',
+                'description': 'Extended context window up to 2M tokens with multimodal understanding',
+                'key_features': ['2M token context', 'Video understanding', 'Code execution', 'Function calling'],
+                'benchmarks': 'MMLU: 85.9%, Long-context recall: 99.7%',
+                'pricing': 'Pay-as-you-go with free tier',
+                'status': 'Production',
+                'link': 'https://deepmind.google/technologies/gemini/pro/'
+            },
+            
+            # Anthropic/Claude - Latest Models
+            {
+                'name': 'Claude 3.5 Sonnet',
+                'company': 'Anthropic/Claude',
+                'release_date': 'October 2024',
+                'category': 'LLM',
+                'description': 'Most intelligent Claude model with enhanced coding and agentic capabilities',
+                'key_features': ['Computer use (beta)', 'Superior coding', '200K context', 'Vision capabilities'],
+                'benchmarks': 'SWE-bench Verified: 49.0%, TAU-bench: 69.2%, GPQA: 65.0%',
+                'pricing': '$3/1M input, $15/1M output tokens',
+                'status': 'Production',
+                'link': 'https://www.anthropic.com/claude/sonnet'
+            },
+            {
+                'name': 'Claude 3.5 Haiku',
+                'company': 'Anthropic/Claude',
+                'release_date': 'November 2024',
+                'category': 'Fast LLM',
+                'description': 'Fastest and most affordable Claude 3.5 model',
+                'key_features': ['Low latency', 'Vision support', 'Same quality as Opus 3', 'Cost-effective'],
+                'benchmarks': 'Coding: rivals Claude 3 Opus, Speed: 3x faster',
+                'pricing': '$0.80/1M input, $4/1M output tokens',
+                'status': 'Production',
+                'link': 'https://www.anthropic.com/claude/haiku'
+            },
+            
+            # Meta/LLaMA - Latest Models
+            {
+                'name': 'Llama 3.3 70B',
+                'company': 'Meta/LLaMA',
+                'release_date': 'December 2024',
+                'category': 'Open Source LLM',
+                'description': 'Cost-effective open model matching 405B performance',
+                'key_features': ['70B parameters', '405B-level performance', 'Multilingual', 'Commercial license'],
+                'benchmarks': 'MMLU: 86.0%, HumanEval: 88.4%, MATH: 71.7%',
+                'pricing': 'Open source (free)',
+                'status': 'Production',
+                'link': 'https://ai.meta.com/blog/llama-3-3/'
+            },
+            {
+                'name': 'Llama 3.2 Vision',
+                'company': 'Meta/LLaMA',
+                'release_date': 'September 2024',
+                'category': 'Multimodal Open LLM',
+                'description': 'First Llama models with native vision understanding',
+                'key_features': ['11B & 90B sizes', 'Image understanding', 'Edge deployment', 'Open source'],
+                'benchmarks': '90B: competitive with closed models on vision tasks',
+                'pricing': 'Open source (free)',
+                'status': 'Production',
+                'link': 'https://ai.meta.com/blog/llama-3-2-vision/'
+            },
+            
+            # Mistral AI - Latest Models
+            {
+                'name': 'Mistral Large 2',
+                'company': 'Mistral AI',
+                'release_date': 'July 2024',
+                'category': 'LLM',
+                'description': '123B parameter flagship model with advanced reasoning',
+                'key_features': ['123B parameters', '128K context', 'Function calling', 'Multilingual (80+ languages)'],
+                'benchmarks': 'MMLU: 84.0%, HumanEval: 92.0%, Math: 76.9%',
+                'pricing': 'API-based: competitive pricing',
+                'status': 'Production',
+                'link': 'https://mistral.ai/news/mistral-large-2407/'
+            },
+            
+            # DeepSeek - Latest Models
+            {
+                'name': 'DeepSeek-V3',
+                'company': 'DeepSeek',
+                'release_date': 'December 2024',
+                'category': 'Open Source LLM',
+                'description': '671B MoE model with groundbreaking efficiency',
+                'key_features': ['671B total, 37B active', 'MoE architecture', 'Open source', 'Cost-effective training'],
+                'benchmarks': 'Matches GPT-4o, trained for $5.5M',
+                'pricing': 'Open source (free)',
+                'status': 'Production',
+                'link': 'https://github.com/deepseek-ai/DeepSeek-V3'
+            },
+            
+            # Specialized Models
             {
                 'name': 'DALL-E 3',
                 'company': 'OpenAI',
+                'release_date': 'October 2023 (Updated)',
                 'category': 'Image Generation',
-                'description': 'Advanced text-to-image generation with improved prompt following',
-                'use_case': 'Creating marketing visuals, design concepts, illustrations',
-                'pricing': 'API-based',
+                'description': 'State-of-the-art text-to-image generation',
+                'key_features': ['Better prompt following', 'Higher quality', 'Integrated ChatGPT', 'Safe generation'],
+                'benchmarks': 'Human preference: 71.2% vs 48.8% (DALL-E 2)',
+                'pricing': 'API-based: from $0.040/image',
+                'status': 'Production',
                 'link': 'https://openai.com/dall-e-3'
             },
             {
-                'name': 'GPT-4 Vision',
-                'company': 'OpenAI',
-                'category': 'Multimodal LLM',
-                'description': 'GPT-4 with image understanding capabilities',
-                'use_case': 'Image analysis, document processing, visual QA',
-                'pricing': 'API-based',
-                'link': 'https://platform.openai.com/docs/guides/vision'
-            },
-            
-            # Google/Gemini
-            {
-                'name': 'Gemini Pro',
-                'company': 'Google/Gemini',
-                'category': 'LLM',
-                'description': 'Google\'s most capable AI model with multimodal understanding',
-                'use_case': 'Complex reasoning, code generation, content creation',
-                'pricing': 'Free tier + API',
-                'link': 'https://ai.google.dev/'
-            },
-            {
-                'name': 'Gemini Vision',
-                'company': 'Google/Gemini',
-                'category': 'Multimodal LLM',
-                'description': 'Gemini with native image and video understanding',
-                'use_case': 'Video analysis, image captioning, visual reasoning',
-                'pricing': 'API-based',
-                'link': 'https://ai.google.dev/tutorials/vision_quickstart'
-            },
-            {
-                'name': 'Vertex AI',
-                'company': 'Google/Gemini',
-                'category': 'ML Platform',
-                'description': 'Unified AI platform for building and deploying ML models',
-                'use_case': 'Enterprise AI deployment, model training, MLOps',
-                'pricing': 'Pay-as-you-go',
-                'link': 'https://cloud.google.com/vertex-ai'
-            },
-            
-            # Anthropic/Claude
-            {
-                'name': 'Claude 3 Opus',
-                'company': 'Anthropic/Claude',
-                'category': 'LLM',
-                'description': 'Most capable Claude model with strong reasoning and analysis',
-                'use_case': 'Complex research, coding, detailed analysis',
-                'pricing': 'API-based',
-                'link': 'https://www.anthropic.com/claude'
-            },
-            {
-                'name': 'Claude 3 Sonnet',
-                'company': 'Anthropic/Claude',
-                'category': 'LLM',
-                'description': 'Balanced performance and speed for everyday tasks',
-                'use_case': 'Customer service, content generation, data processing',
-                'pricing': 'API-based',
-                'link': 'https://www.anthropic.com/claude'
-            },
-            
-            # NVIDIA
-            {
-                'name': 'NVIDIA NIM',
-                'company': 'NVIDIA',
-                'category': 'Inference Platform',
-                'description': 'Optimized inference microservices for AI models',
-                'use_case': 'Fast model deployment, edge AI, production inference',
-                'pricing': 'Enterprise',
-                'link': 'https://www.nvidia.com/en-us/ai-data-science/products/nim/'
-            },
-            {
-                'name': 'NVIDIA AI Workbench',
-                'company': 'NVIDIA',
-                'category': 'Development Platform',
-                'description': 'Unified toolkit for AI development and deployment',
-                'use_case': 'Local AI development, model fine-tuning, testing',
-                'pricing': 'Free',
-                'link': 'https://www.nvidia.com/en-us/deep-learning-ai/solutions/data-science/workbench/'
-            },
-            
-            # Microsoft
-            {
-                'name': 'Azure OpenAI Service',
-                'company': 'Microsoft',
-                'category': 'Cloud AI Platform',
-                'description': 'Enterprise OpenAI models on Azure with security features',
-                'use_case': 'Enterprise AI applications, secure deployments',
-                'pricing': 'Enterprise',
-                'link': 'https://azure.microsoft.com/en-us/products/ai-services/openai-service'
-            },
-            {
-                'name': 'Copilot Studio',
-                'company': 'Microsoft',
-                'category': 'AI Assistant Builder',
-                'description': 'Build custom copilots for Microsoft 365',
-                'use_case': 'Custom AI assistants, workflow automation',
-                'pricing': 'Subscription',
-                'link': 'https://www.microsoft.com/en-us/microsoft-copilot/microsoft-copilot-studio'
-            },
-            
-            # Meta/LLaMA
-            {
-                'name': 'LLaMA 3',
-                'company': 'Meta/LLaMA',
-                'category': 'Open Source LLM',
-                'description': 'Meta\'s latest open-source large language model',
-                'use_case': 'Research, fine-tuning, self-hosted AI',
-                'pricing': 'Open Source',
-                'link': 'https://llama.meta.com/'
-            },
-            
-            # Mistral AI
-            {
-                'name': 'Mistral Large',
-                'company': 'Mistral AI',
-                'category': 'LLM',
-                'description': 'High-performance multilingual AI model',
-                'use_case': 'Multilingual applications, code generation',
-                'pricing': 'API-based',
-                'link': 'https://mistral.ai/'
-            },
-            
-            # Cohere
-            {
-                'name': 'Cohere Rerank',
-                'company': 'Cohere',
-                'category': 'Search & Retrieval',
-                'description': 'Advanced semantic reranking for search results',
-                'use_case': 'Improving RAG system accuracy, search enhancement',
-                'pricing': 'Freemium',
-                'link': 'https://cohere.com/rerank'
-            },
-            
-            # Stability AI
-            {
-                'name': 'Stable Diffusion XL',
+                'name': 'Stable Diffusion 3.5',
                 'company': 'Stability AI',
+                'release_date': 'October 2024',
                 'category': 'Image Generation',
-                'description': 'Latest Stable Diffusion with improved image quality',
-                'use_case': 'High-quality image generation, art creation',
-                'pricing': 'Open Source + API',
-                'link': 'https://stability.ai/stable-diffusion'
-            },
-            
-            # Hugging Face
-            {
-                'name': 'Transformers',
-                'company': 'Hugging Face',
-                'category': 'ML Library',
-                'description': 'State-of-the-art NLP library with thousands of models',
-                'use_case': 'Model deployment, fine-tuning, research',
-                'pricing': 'Open Source',
-                'link': 'https://huggingface.co/transformers/'
+                'description': 'Latest open-source image generation with improved quality',
+                'key_features': ['Multiple sizes (Large, Medium)', 'Commercial license', 'Better prompt adherence', 'Fine-tunable'],
+                'benchmarks': 'Competitive with Midjourney v6 & DALL-E 3',
+                'pricing': 'Open source + API options',
+                'status': 'Production',
+                'link': 'https://stability.ai/news/stable-diffusion-3-5'
             },
             {
-                'name': 'Inference Endpoints',
-                'company': 'Hugging Face',
-                'category': 'Model Hosting',
-                'description': 'Managed infrastructure for deploying ML models',
-                'use_case': 'Production model serving, scalable inference',
-                'pricing': 'Pay-as-you-go',
-                'link': 'https://huggingface.co/inference-endpoints'
-            },
-            
-            # General/Framework Tools
-            {
-                'name': 'LangChain',
-                'company': 'General',
-                'category': 'LLM Framework',
-                'description': 'Framework for building LLM applications',
-                'use_case': 'RAG systems, agents, LLM workflows',
-                'pricing': 'Open Source',
-                'link': 'https://www.langchain.com/'
-            },
-            {
-                'name': 'AutoGen',
-                'company': 'Microsoft',
-                'category': 'Multi-Agent Framework',
-                'description': 'Framework for building multi-agent AI applications',
-                'use_case': 'Conversational AI, autonomous agents',
-                'pricing': 'Open Source',
-                'link': 'https://microsoft.github.io/autogen/'
+                'name': 'Whisper v3',
+                'company': 'OpenAI',
+                'release_date': 'November 2023 (Updated)',
+                'category': 'Speech Recognition',
+                'description': 'Multilingual speech recognition and translation',
+                'key_features': ['99 languages', 'Real-time capable', 'Robust to accents', 'Open source'],
+                'benchmarks': 'WER improvements across all languages',
+                'pricing': 'Open source (free) + API',
+                'status': 'Production',
+                'link': 'https://github.com/openai/whisper'
             },
         ]
         
         # Filter by company if specified
         if company_filter and 'All Companies' not in company_filter:
-            filtered_tools = [
-                tool for tool in all_tools 
-                if tool['company'] in company_filter or tool['company'] == 'General'
+            filtered_models = [
+                model for model in latest_models 
+                if model['company'] in company_filter
             ]
-            return filtered_tools
+            return filtered_models
         
-        return all_tools
+        return latest_models
     
     def collect_research(self):
         """Collect recent AI research papers"""
@@ -588,16 +641,8 @@ class AIIntelligenceAgent:
         ]
         return papers
     
-    def analyze_with_gemini(self, news_data, tools_data, research_data, custom_instructions=""):
+    def analyze_with_gemini(self, news_data, models_data, research_data, custom_instructions=""):
         """Use Gemini to analyze and create intelligent report"""
-        
-        # Convert datetime objects to strings for JSON serialization
-        news_data_serializable = []
-        for article in news_data:
-            article_copy = article.copy()
-            if 'date' in article_copy and article_copy['date']:
-                article_copy['date'] = article_copy['date'].strftime('%Y-%m-%d %H:%M:%S')
-            news_data_serializable.append(article_copy)
         
         # Base prompt
         prompt = f"""
@@ -605,11 +650,11 @@ You are an expert AI Technology Intelligence Analyst. Analyze the following data
 
 TODAY'S DATE: {datetime.now().strftime('%A, %B %d, %Y')}
 
-=== NEWS ARTICLES ===
-{json.dumps(news_data_serializable, indent=2)}
+=== NEWS ARTICLES (BY CATEGORY) ===
+{json.dumps(news_data, indent=2)}
 
-=== NEW AI TOOLS ===
-{json.dumps(tools_data, indent=2)}
+=== LATEST AI MODEL DEVELOPMENTS ===
+{json.dumps(models_data, indent=2)}
 
 === RESEARCH PAPERS ===
 {json.dumps(research_data, indent=2)}
@@ -631,32 +676,34 @@ Create a professional intelligence report with the following sections:
 
 1. EXECUTIVE SUMMARY (2-3 sentences highlighting the most important developments)
 
-2. TOP AI NEWS STORIES (Select the 5 most significant stories)
-   For each story provide:
-   - Clear, engaging headline
-   - 2-3 sentence summary focusing on WHY it matters
-   - Key implications for AI practitioners
-   - Source and link
+2. NEWS BY CATEGORY
+   Organize news into these categories and highlight top stories in each:
+   - 🏛️ LAWSUITS & LEGAL: Any legal battles, patent disputes, regulatory issues
+   - 💻 TECHNOLOGY & RESEARCH: New techniques, algorithms, breakthroughs
+   - 🔧 HARDWARE: Chips, GPUs, infrastructure developments
+   - 🛠️ SOFTWARE & TOOLS: New releases, updates, features
+   - 📈 STOCKS & FINANCE: Funding, valuations, market movements
+   - 📰 GENERAL: Other significant news
+   
+   For each category (only include if there's news):
+   - Section header with emoji
+   - Top 2-3 most significant stories
+   - Brief analysis of implications
 
-3. NEW AI TOOLS SPOTLIGHT (Highlight 5 most interesting tools)
-   For each tool provide:
-   - Tool name and category
-   - Core functionality in simple terms
-   - Specific use case example
-   - Why it's noteworthy or different
-   - Pricing/availability
+3. LATEST MODEL DEVELOPMENTS
+   Highlight the newest and most significant AI models:
+   - Model name, company, and release date
+   - Key capabilities and features
+   - Benchmark performance highlights
+   - Why this matters / Use cases
+   - Focus on models released or updated in the last 3-6 months
 
-4. RESEARCH HIGHLIGHTS (If applicable)
-   - Brief mention of significant papers
-   - Key findings or methodologies
-   - Potential real-world applications
-
-5. EMERGING TRENDS ANALYSIS
-   - Identify 2-3 patterns across today's news, tools, and research
+4. EMERGING TRENDS ANALYSIS
+   - Identify 2-3 patterns across today's news, models, and developments
    - What themes are emerging?
-   - What technologies are gaining momentum?
+   - Which companies are leading in which areas?
 
-6. ACTIONABLE INSIGHTS
+5. ACTIONABLE INSIGHTS
    - 3 specific takeaways for AI developers/enthusiasts
    - Concrete actions or areas to explore
 
@@ -672,29 +719,22 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
     
     def generate_daily_report(self):
         """Main orchestration method"""
-        
-        # Get filters from session state
-        date_range = st.session_state.get('date_range')
-        company_filter = st.session_state.get('company_filter', ['All Companies'])
-        
-        # Convert dates to strings for storage
-        date_range_str = None
-        if date_range:
-            start_date, end_date = date_range
-            date_range_str = f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
-        
         report_data = {
             'timestamp': datetime.now().isoformat(),
             'date': datetime.now().strftime('%Y-%m-%d'),
             'news': [],
-            'tools': [],
+            'models': [],
             'research': [],
             'analysis': '',
             'filters': {
-                'date_range': date_range_str,
-                'companies': company_filter
+                'date_range': st.session_state.get('date_range'),
+                'companies': st.session_state.get('company_filter', ['All Companies'])
             }
         }
+        
+        # Get filters from session state
+        date_range = st.session_state.get('date_range')
+        company_filter = st.session_state.get('company_filter', ['All Companies'])
         
         # Collect data with filters
         with st.spinner('🔍 Collecting AI news from selected companies...'):
@@ -705,8 +745,8 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
             )
             time.sleep(1)
         
-        with st.spinner('🛠️ Discovering AI tools and products...'):
-            report_data['tools'] = self.collect_tools(company_filter=company_filter)
+        with st.spinner('🤖 Discovering latest AI models and developments...'):
+            report_data['models'] = self.collect_latest_models(company_filter=company_filter)
             time.sleep(1)
         
         with st.spinner('🔬 Gathering research papers...'):
@@ -724,7 +764,7 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
         with st.spinner(analysis_message):
             report_data['analysis'] = self.analyze_with_gemini(
                 report_data['news'],
-                report_data['tools'],
+                report_data['models'],
                 report_data['research'],
                 custom_prompt
             )
@@ -834,22 +874,14 @@ def render_sidebar():
                 "Cohere",
                 "Stability AI",
                 "Hugging Face",
+                "DeepSeek",
                 "All Companies"
             ],
             default=["All Companies"],
-            help="Filter news and tools from specific companies"
+            help="Filter news and models from specific companies"
         )
         
         st.session_state.company_filter = companies
-        
-        st.markdown("---")
-        
-        auto_refresh = st.checkbox("Auto-refresh daily", value=False)
-        if auto_refresh:
-            st.info("Reports will auto-generate at 6 AM")
-        
-        include_research = st.checkbox("Include research papers", value=True)
-        max_articles = st.slider("Max news articles", 5, 50, 20)
         
         st.markdown("---")
         
@@ -928,8 +960,8 @@ def render_sidebar():
         st.markdown("### ℹ️ About")
         st.markdown("""
         This AI Intelligence Agent automatically collects and analyzes:
-        - 📰 Latest AI news
-        - 🛠️ New AI tools & frameworks
+        - 📰 Latest AI news (categorized)
+        - 🤖 Latest model developments
         - 🔬 Research papers
         - 📈 Emerging trends
         
@@ -962,8 +994,8 @@ def render_metrics_dashboard(report_data):
     with col2:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-value">{len(report_data['tools'])}</div>
-            <div class="metric-label">AI Tools</div>
+            <div class="metric-value">{len(report_data['models'])}</div>
+            <div class="metric-label">Latest Models</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -982,6 +1014,67 @@ def render_metrics_dashboard(report_data):
             <div class="metric-label">Analysis Complete</div>
         </div>
         """, unsafe_allow_html=True)
+
+
+def render_news_by_category(news_articles):
+    """Render news articles organized by category"""
+    # Group articles by category
+    categorized_news = {
+        'Lawsuits': [],
+        'Technology & Research': [],
+        'Hardware': [],
+        'Software & Tools': [],
+        'Stocks & Finance': [],
+        'General': []
+    }
+    
+    for article in news_articles:
+        for category in article.get('categories', ['General']):
+            if category in categorized_news:
+                categorized_news[category].append(article)
+    
+    # Category display configuration
+    category_config = {
+        'Lawsuits': {'emoji': '🏛️', 'badge_class': 'badge-lawsuit'},
+        'Technology & Research': {'emoji': '💻', 'badge_class': 'badge-technology'},
+        'Hardware': {'emoji': '🔧', 'badge_class': 'badge-hardware'},
+        'Software & Tools': {'emoji': '🛠️', 'badge_class': 'badge-software'},
+        'Stocks & Finance': {'emoji': '📈', 'badge_class': 'badge-stocks'},
+        'General': {'emoji': '📰', 'badge_class': 'badge-new'}
+    }
+    
+    # Display each category
+    for category, articles in categorized_news.items():
+        if articles:  # Only show categories with articles
+            config = category_config.get(category, {'emoji': '📰', 'badge_class': 'badge-new'})
+            
+            st.markdown(f"""
+            <div class="category-header">
+                {config['emoji']} {category}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for article in articles[:5]:  # Limit to 5 articles per category
+                # Create company badges
+                company_badges = ""
+                for company in article.get('companies', ['General']):
+                    company_badges += f'<span class="badge" style="background: #e0e7ff; color: #667eea; margin-right: 0.25rem;">{company}</span>'
+                
+                st.markdown(f"""
+                <div class="news-card">
+                    <span class="badge {config['badge_class']}">{category}</span>
+                    <span class="badge" style="background: #f0fdf4; color: #16a34a;">{article['source']}</span>
+                    {company_badges}
+                    <h3 style="margin: 0.75rem 0;">{article['title']}</h3>
+                    <p style="color: #64748b; margin: 0.5rem 0;">{article['summary']}</p>
+                    <div style="margin-top: 1rem;">
+                        <a href="{article['link']}" target="_blank">Read more →</a>
+                        <span style="color: #94a3b8; margin-left: 1rem; font-size: 0.875rem;">
+                            📅 {article['published']}
+                        </span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 def main():
@@ -1003,17 +1096,20 @@ def main():
         
         with col1:
             st.markdown("""
-            ### 📰 News Aggregation
-            - Multiple top AI sources
-            - Real-time RSS feeds
-            - Smart filtering
+            ### 📰 Categorized News
+            - Lawsuits & Legal
+            - Technology & Research
+            - Hardware Developments
+            - Software & Tools
+            - Stocks & Finance
             """)
         
         with col2:
             st.markdown("""
-            ### 🛠️ Tool Discovery
-            - Latest AI frameworks
-            - Use case analysis
+            ### 🤖 Latest Models
+            - New model releases
+            - Performance benchmarks
+            - Feature comparisons
             - Pricing information
             """)
         
@@ -1030,8 +1126,8 @@ def main():
     # Main content area
     tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Generate Report",
-        "📰 Latest News",
-        "🛠️ AI Tools",
+        "📰 News by Category",
+        "🤖 Latest Models",
         "📚 History"
     ])
     
@@ -1078,15 +1174,6 @@ def main():
                     
                     # Download button
                     st.markdown("---")
-                    
-                    # Prepare data for download (convert datetime objects)
-                    download_news = []
-                    for article in report_data['news']:
-                        article_copy = article.copy()
-                        if 'date' in article_copy and article_copy['date']:
-                            article_copy['date'] = article_copy['date'].strftime('%Y-%m-%d %H:%M:%S')
-                        download_news.append(article_copy)
-                    
                     report_text = f"""# AI Intelligence Report
 Generated: {report_data['timestamp']}
 
@@ -1096,10 +1183,10 @@ Generated: {report_data['timestamp']}
 ## Raw Data
 
 ### News Articles
-{json.dumps(download_news, indent=2)}
+{json.dumps(report_data['news'], indent=2)}
 
-### AI Tools
-{json.dumps(report_data['tools'], indent=2)}
+### Latest AI Models
+{json.dumps(report_data['models'], indent=2)}
 
 ### Research Papers
 {json.dumps(report_data['research'], indent=2)}
@@ -1125,7 +1212,7 @@ Generated: {report_data['timestamp']}
                 st.markdown(latest_report['analysis'])
     
     with tab2:
-        st.markdown("## 📰 Latest AI News")
+        st.markdown("## 📰 Latest AI News by Category")
         
         if st.button("🔄 Fetch Latest News"):
             try:
@@ -1134,35 +1221,14 @@ Generated: {report_data['timestamp']}
                 company_filter = st.session_state.get('company_filter', ['All Companies'])
                 
                 news_articles = agent.collect_news(
-                    max_articles=30,
+                    max_articles=50,
                     date_range=date_range,
                     company_filter=company_filter
                 )
                 
                 if news_articles:
                     st.success(f"✅ Found {len(news_articles)} articles")
-                    
-                    for article in news_articles:
-                        # Create company badges
-                        company_badges = ""
-                        for company in article.get('companies', ['General']):
-                            company_badges += f'<span class="badge" style="background: #e0e7ff; color: #667eea; margin-right: 0.25rem;">{company}</span>'
-                        
-                        st.markdown(f"""
-                        <div class="news-card">
-                            <span class="badge badge-new">NEW</span>
-                            <span class="badge" style="background: #f0fdf4; color: #16a34a;">{article['source']}</span>
-                            {company_badges}
-                            <h3 style="margin: 0.75rem 0;">{article['title']}</h3>
-                            <p style="color: #64748b; margin: 0.5rem 0;">{article['summary']}</p>
-                            <div style="margin-top: 1rem;">
-                                <a href="{article['link']}" target="_blank">Read more →</a>
-                                <span style="color: #94a3b8; margin-left: 1rem; font-size: 0.875rem;">
-                                    📅 {article['published']}
-                                </span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    render_news_by_category(news_articles)
                 else:
                     st.info("No articles found for the selected filters. Try adjusting your date range or company selection.")
                     
@@ -1170,38 +1236,57 @@ Generated: {report_data['timestamp']}
                 st.error(f"Error fetching news: {str(e)}")
     
     with tab3:
-        st.markdown("## 🛠️ New AI Tools & Frameworks")
+        st.markdown("## 🤖 Latest AI Model Developments")
+        st.markdown("*Discover the newest and most significant AI models released in recent months*")
         
-        if st.button("🔍 Discover AI Tools"):
+        if st.button("🔍 Discover Latest Models"):
             try:
                 agent = AIIntelligenceAgent(st.session_state.api_key)
                 company_filter = st.session_state.get('company_filter', ['All Companies'])
-                tools = agent.collect_tools(company_filter=company_filter)
+                models = agent.collect_latest_models(company_filter=company_filter)
                 
-                if tools:
-                    st.success(f"✅ Found {len(tools)} tools from selected companies")
+                if models:
+                    st.success(f"✅ Found {len(models)} latest models from selected companies")
                     
-                    for tool in tools:
+                    for model in models:
+                        # Status badge color
+                        status_color = "#10b981" if model['status'] == "Production" else "#f59e0b"
+                        
                         st.markdown(f"""
                         <div class="tool-card">
-                            <h3 style="margin: 0 0 0.5rem 0;">{tool['name']}</h3>
-                            <span class="badge" style="background: #ddd6fe; color: #7c3aed;">{tool['category']}</span>
-                            <span class="badge" style="background: #fef3c7; color: #d97706;">{tool['pricing']}</span>
-                            <span class="badge" style="background: #dbeafe; color: #2563eb;">{tool['company']}</span>
-                            <p style="margin: 1rem 0; color: #334155;">{tool['description']}</p>
+                            <h3 style="margin: 0 0 0.5rem 0;">{model['name']}</h3>
+                            <span class="badge" style="background: #ddd6fe; color: #7c3aed;">{model['category']}</span>
+                            <span class="badge" style="background: {status_color}; color: white;">{model['status']}</span>
+                            <span class="badge" style="background: #dbeafe; color: #2563eb;">{model['company']}</span>
+                            <span class="badge" style="background: #fef3c7; color: #d97706;">Released: {model['release_date']}</span>
+                            
+                            <p style="margin: 1rem 0; color: #334155; font-weight: 500;">{model['description']}</p>
+                            
+                            <div style="margin: 1rem 0;">
+                                <strong>🎯 Key Features:</strong>
+                                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                                    {"".join([f"<li>{feature}</li>" for feature in model['key_features']])}
+                                </ul>
+                            </div>
+                            
                             <p style="margin: 0.5rem 0;">
-                                <strong>💡 Use Case:</strong> {tool['use_case']}
+                                <strong>📊 Benchmarks:</strong> {model['benchmarks']}
                             </p>
-                            <a href="{tool['link']}" target="_blank" style="display: inline-block; margin-top: 0.75rem;">
-                                Explore tool →
+                            
+                            <p style="margin: 0.5rem 0;">
+                                <strong>💰 Pricing:</strong> {model['pricing']}
+                            </p>
+                            
+                            <a href="{model['link']}" target="_blank" style="display: inline-block; margin-top: 0.75rem;">
+                                Learn more about {model['name']} →
                             </a>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("No tools found for the selected companies.")
+                    st.info("No models found for the selected companies.")
                     
             except Exception as e:
-                st.error(f"Error fetching tools: {str(e)}")
+                st.error(f"Error fetching models: {str(e)}")
     
     with tab4:
         st.markdown("## 📚 Report History")

@@ -224,73 +224,348 @@ class AIIntelligenceAgent:
             'The Batch (DeepLearning.AI)': 'https://www.deeplearning.ai/the-batch/feed/',
         }
         
-    def collect_news(self, max_articles=15):
-        """Collect latest AI news from RSS feeds"""
+    def collect_news(self, max_articles=20, date_range=None, company_filter=None):
+        """Collect latest AI news from RSS feeds with date and company filtering"""
+        
+        # Enhanced news sources with company-specific feeds
+        all_news_sources = {
+            'General': {
+                'TechCrunch AI': 'https://techcrunch.com/category/artificial-intelligence/feed/',
+                'MIT Technology Review': 'https://www.technologyreview.com/feed/',
+                'VentureBeat AI': 'https://venturebeat.com/category/ai/feed/',
+                'The Batch (DeepLearning.AI)': 'https://www.deeplearning.ai/the-batch/feed/',
+                'AI News': 'https://artificialintelligence-news.com/feed/',
+            },
+            'OpenAI': {
+                'OpenAI Blog': 'https://openai.com/blog/rss/',
+            },
+            'Google/Gemini': {
+                'Google AI Blog': 'https://blog.google/technology/ai/rss/',
+                'Google DeepMind': 'https://deepmind.google/blog/rss.xml',
+            },
+            'Anthropic/Claude': {
+                'Anthropic News': 'https://www.anthropic.com/news/rss',
+            },
+            'NVIDIA': {
+                'NVIDIA Blog': 'https://blogs.nvidia.com/feed/',
+            },
+            'Microsoft': {
+                'Microsoft AI Blog': 'https://blogs.microsoft.com/ai/feed/',
+            },
+            'Meta/LLaMA': {
+                'Meta AI Blog': 'https://ai.meta.com/blog/rss/',
+            },
+            'Hugging Face': {
+                'Hugging Face Blog': 'https://huggingface.co/blog/feed.xml',
+            },
+        }
+        
+        # Determine which sources to use based on company filter
+        sources_to_use = {}
+        
+        if not company_filter or 'All Companies' in company_filter:
+            # Use all sources
+            for category, sources in all_news_sources.items():
+                sources_to_use.update(sources)
+        else:
+            # Use general sources always
+            sources_to_use.update(all_news_sources.get('General', {}))
+            
+            # Add specific company sources
+            for company in company_filter:
+                if company in all_news_sources:
+                    sources_to_use.update(all_news_sources[company])
+        
         all_articles = []
         
-        for source_name, feed_url in self.news_sources.items():
+        # Parse date range if provided
+        start_date = None
+        end_date = None
+        if date_range:
+            start_date, end_date = date_range
+            # Convert to datetime for comparison
+            start_date = datetime.combine(start_date, datetime.min.time())
+            end_date = datetime.combine(end_date, datetime.max.time())
+        
+        for source_name, feed_url in sources_to_use.items():
             try:
                 feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:3]:  # Top 3 from each source
+                
+                for entry in feed.entries:
+                    # Parse published date
+                    article_date = None
+                    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                        article_date = datetime(*entry.published_parsed[:6])
+                    elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                        article_date = datetime(*entry.updated_parsed[:6])
+                    
+                    # Filter by date range if specified
+                    if date_range and article_date:
+                        if not (start_date <= article_date <= end_date):
+                            continue
+                    
+                    # Determine company tags
+                    company_tags = []
+                    title_lower = entry.get('title', '').lower()
+                    summary_lower = entry.get('summary', '').lower()
+                    
+                    if 'openai' in title_lower or 'gpt' in title_lower or 'chatgpt' in title_lower:
+                        company_tags.append('OpenAI')
+                    if 'gemini' in title_lower or 'google' in title_lower or 'deepmind' in title_lower:
+                        company_tags.append('Google/Gemini')
+                    if 'claude' in title_lower or 'anthropic' in title_lower:
+                        company_tags.append('Anthropic/Claude')
+                    if 'nvidia' in title_lower:
+                        company_tags.append('NVIDIA')
+                    if 'microsoft' in title_lower:
+                        company_tags.append('Microsoft')
+                    if 'meta' in title_lower or 'llama' in title_lower or 'facebook' in title_lower:
+                        company_tags.append('Meta/LLaMA')
+                    if 'mistral' in title_lower:
+                        company_tags.append('Mistral AI')
+                    if 'cohere' in title_lower:
+                        company_tags.append('Cohere')
+                    if 'stability' in title_lower:
+                        company_tags.append('Stability AI')
+                    if 'hugging face' in title_lower or 'huggingface' in title_lower:
+                        company_tags.append('Hugging Face')
+                    
                     all_articles.append({
                         'source': source_name,
                         'title': entry.get('title', 'No title'),
                         'link': entry.get('link', '#'),
                         'summary': entry.get('summary', 'No summary available')[:300],
-                        'published': entry.get('published', 'Unknown date')
+                        'published': entry.get('published', 'Unknown date'),
+                        'date': article_date,
+                        'companies': company_tags if company_tags else ['General'],
                     })
+                    
             except Exception as e:
                 st.warning(f"Could not fetch from {source_name}: {str(e)}")
                 continue
         
+        # Sort by date (most recent first)
+        all_articles.sort(key=lambda x: x.get('date') or datetime.min, reverse=True)
+        
         return all_articles[:max_articles]
     
-    def collect_tools(self):
-        """Collect information about new AI tools"""
-        # Mock data for demonstration - in production, integrate with real APIs
-        tools = [
+    def collect_tools(self, company_filter=None):
+        """Collect information about new AI tools, categorized by company"""
+        
+        # Comprehensive AI tools database with company affiliations
+        all_tools = [
+            # OpenAI
             {
-                'name': 'AutoGen Studio',
-                'category': 'Multi-Agent Framework',
-                'description': 'Low-code framework for building multi-agent AI applications',
-                'use_case': 'Building conversational AI agents with minimal code',
-                'pricing': 'Open Source',
-                'link': 'https://microsoft.github.io/autogen/'
+                'name': 'GPT-4 Turbo',
+                'company': 'OpenAI',
+                'category': 'LLM',
+                'description': 'Latest GPT-4 model with 128K context window and improved performance',
+                'use_case': 'Advanced text generation, code assistance, analysis',
+                'pricing': 'API-based',
+                'link': 'https://platform.openai.com/docs/models/gpt-4-turbo'
             },
             {
-                'name': 'LangChain Templates',
-                'category': 'LLM Development',
-                'description': 'Pre-built templates for common LLM applications',
-                'use_case': 'Rapid prototyping of LLM applications',
+                'name': 'DALL-E 3',
+                'company': 'OpenAI',
+                'category': 'Image Generation',
+                'description': 'Advanced text-to-image generation with improved prompt following',
+                'use_case': 'Creating marketing visuals, design concepts, illustrations',
+                'pricing': 'API-based',
+                'link': 'https://openai.com/dall-e-3'
+            },
+            {
+                'name': 'GPT-4 Vision',
+                'company': 'OpenAI',
+                'category': 'Multimodal LLM',
+                'description': 'GPT-4 with image understanding capabilities',
+                'use_case': 'Image analysis, document processing, visual QA',
+                'pricing': 'API-based',
+                'link': 'https://platform.openai.com/docs/guides/vision'
+            },
+            
+            # Google/Gemini
+            {
+                'name': 'Gemini Pro',
+                'company': 'Google/Gemini',
+                'category': 'LLM',
+                'description': 'Google\'s most capable AI model with multimodal understanding',
+                'use_case': 'Complex reasoning, code generation, content creation',
+                'pricing': 'Free tier + API',
+                'link': 'https://ai.google.dev/'
+            },
+            {
+                'name': 'Gemini Vision',
+                'company': 'Google/Gemini',
+                'category': 'Multimodal LLM',
+                'description': 'Gemini with native image and video understanding',
+                'use_case': 'Video analysis, image captioning, visual reasoning',
+                'pricing': 'API-based',
+                'link': 'https://ai.google.dev/tutorials/vision_quickstart'
+            },
+            {
+                'name': 'Vertex AI',
+                'company': 'Google/Gemini',
+                'category': 'ML Platform',
+                'description': 'Unified AI platform for building and deploying ML models',
+                'use_case': 'Enterprise AI deployment, model training, MLOps',
+                'pricing': 'Pay-as-you-go',
+                'link': 'https://cloud.google.com/vertex-ai'
+            },
+            
+            # Anthropic/Claude
+            {
+                'name': 'Claude 3 Opus',
+                'company': 'Anthropic/Claude',
+                'category': 'LLM',
+                'description': 'Most capable Claude model with strong reasoning and analysis',
+                'use_case': 'Complex research, coding, detailed analysis',
+                'pricing': 'API-based',
+                'link': 'https://www.anthropic.com/claude'
+            },
+            {
+                'name': 'Claude 3 Sonnet',
+                'company': 'Anthropic/Claude',
+                'category': 'LLM',
+                'description': 'Balanced performance and speed for everyday tasks',
+                'use_case': 'Customer service, content generation, data processing',
+                'pricing': 'API-based',
+                'link': 'https://www.anthropic.com/claude'
+            },
+            
+            # NVIDIA
+            {
+                'name': 'NVIDIA NIM',
+                'company': 'NVIDIA',
+                'category': 'Inference Platform',
+                'description': 'Optimized inference microservices for AI models',
+                'use_case': 'Fast model deployment, edge AI, production inference',
+                'pricing': 'Enterprise',
+                'link': 'https://www.nvidia.com/en-us/ai-data-science/products/nim/'
+            },
+            {
+                'name': 'NVIDIA AI Workbench',
+                'company': 'NVIDIA',
+                'category': 'Development Platform',
+                'description': 'Unified toolkit for AI development and deployment',
+                'use_case': 'Local AI development, model fine-tuning, testing',
                 'pricing': 'Free',
-                'link': 'https://github.com/langchain-ai/langchain'
+                'link': 'https://www.nvidia.com/en-us/deep-learning-ai/solutions/data-science/workbench/'
             },
+            
+            # Microsoft
+            {
+                'name': 'Azure OpenAI Service',
+                'company': 'Microsoft',
+                'category': 'Cloud AI Platform',
+                'description': 'Enterprise OpenAI models on Azure with security features',
+                'use_case': 'Enterprise AI applications, secure deployments',
+                'pricing': 'Enterprise',
+                'link': 'https://azure.microsoft.com/en-us/products/ai-services/openai-service'
+            },
+            {
+                'name': 'Copilot Studio',
+                'company': 'Microsoft',
+                'category': 'AI Assistant Builder',
+                'description': 'Build custom copilots for Microsoft 365',
+                'use_case': 'Custom AI assistants, workflow automation',
+                'pricing': 'Subscription',
+                'link': 'https://www.microsoft.com/en-us/microsoft-copilot/microsoft-copilot-studio'
+            },
+            
+            # Meta/LLaMA
+            {
+                'name': 'LLaMA 3',
+                'company': 'Meta/LLaMA',
+                'category': 'Open Source LLM',
+                'description': 'Meta\'s latest open-source large language model',
+                'use_case': 'Research, fine-tuning, self-hosted AI',
+                'pricing': 'Open Source',
+                'link': 'https://llama.meta.com/'
+            },
+            
+            # Mistral AI
+            {
+                'name': 'Mistral Large',
+                'company': 'Mistral AI',
+                'category': 'LLM',
+                'description': 'High-performance multilingual AI model',
+                'use_case': 'Multilingual applications, code generation',
+                'pricing': 'API-based',
+                'link': 'https://mistral.ai/'
+            },
+            
+            # Cohere
             {
                 'name': 'Cohere Rerank',
+                'company': 'Cohere',
                 'category': 'Search & Retrieval',
                 'description': 'Advanced semantic reranking for search results',
-                'use_case': 'Improving RAG system accuracy',
+                'use_case': 'Improving RAG system accuracy, search enhancement',
                 'pricing': 'Freemium',
                 'link': 'https://cohere.com/rerank'
             },
+            
+            # Stability AI
             {
-                'name': 'Mem0',
-                'category': 'Memory Layer',
-                'description': 'Intelligent memory layer for AI applications',
-                'use_case': 'Adding persistent memory to AI agents',
+                'name': 'Stable Diffusion XL',
+                'company': 'Stability AI',
+                'category': 'Image Generation',
+                'description': 'Latest Stable Diffusion with improved image quality',
+                'use_case': 'High-quality image generation, art creation',
+                'pricing': 'Open Source + API',
+                'link': 'https://stability.ai/stable-diffusion'
+            },
+            
+            # Hugging Face
+            {
+                'name': 'Transformers',
+                'company': 'Hugging Face',
+                'category': 'ML Library',
+                'description': 'State-of-the-art NLP library with thousands of models',
+                'use_case': 'Model deployment, fine-tuning, research',
                 'pricing': 'Open Source',
-                'link': 'https://mem0.ai/'
+                'link': 'https://huggingface.co/transformers/'
             },
             {
-                'name': 'Gradio 4.0',
-                'category': 'UI Framework',
-                'description': 'Latest version with improved streaming and chat interfaces',
-                'use_case': 'Building ML demos and web interfaces',
+                'name': 'Inference Endpoints',
+                'company': 'Hugging Face',
+                'category': 'Model Hosting',
+                'description': 'Managed infrastructure for deploying ML models',
+                'use_case': 'Production model serving, scalable inference',
+                'pricing': 'Pay-as-you-go',
+                'link': 'https://huggingface.co/inference-endpoints'
+            },
+            
+            # General/Framework Tools
+            {
+                'name': 'LangChain',
+                'company': 'General',
+                'category': 'LLM Framework',
+                'description': 'Framework for building LLM applications',
+                'use_case': 'RAG systems, agents, LLM workflows',
                 'pricing': 'Open Source',
-                'link': 'https://gradio.app/'
-            }
+                'link': 'https://www.langchain.com/'
+            },
+            {
+                'name': 'AutoGen',
+                'company': 'Microsoft',
+                'category': 'Multi-Agent Framework',
+                'description': 'Framework for building multi-agent AI applications',
+                'use_case': 'Conversational AI, autonomous agents',
+                'pricing': 'Open Source',
+                'link': 'https://microsoft.github.io/autogen/'
+            },
         ]
-        return tools
+        
+        # Filter by company if specified
+        if company_filter and 'All Companies' not in company_filter:
+            filtered_tools = [
+                tool for tool in all_tools 
+                if tool['company'] in company_filter or tool['company'] == 'General'
+            ]
+            return filtered_tools
+        
+        return all_tools
     
     def collect_research(self):
         """Collect recent AI research papers"""
@@ -395,16 +670,28 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
             'news': [],
             'tools': [],
             'research': [],
-            'analysis': ''
+            'analysis': '',
+            'filters': {
+                'date_range': st.session_state.get('date_range'),
+                'companies': st.session_state.get('company_filter', ['All Companies'])
+            }
         }
         
-        # Collect data
-        with st.spinner('🔍 Collecting AI news from top sources...'):
-            report_data['news'] = self.collect_news()
+        # Get filters from session state
+        date_range = st.session_state.get('date_range')
+        company_filter = st.session_state.get('company_filter', ['All Companies'])
+        
+        # Collect data with filters
+        with st.spinner('🔍 Collecting AI news from selected companies...'):
+            report_data['news'] = self.collect_news(
+                max_articles=50,
+                date_range=date_range,
+                company_filter=company_filter
+            )
             time.sleep(1)
         
-        with st.spinner('🛠️ Discovering new AI tools...'):
-            report_data['tools'] = self.collect_tools()
+        with st.spinner('🛠️ Discovering AI tools and products...'):
+            report_data['tools'] = self.collect_tools(company_filter=company_filter)
             time.sleep(1)
         
         with st.spinner('🔬 Gathering research papers...'):
@@ -488,12 +775,66 @@ def render_sidebar():
         # Report settings
         st.markdown("### 📊 Report Settings")
         
+        # Date Range Selector
+        st.markdown("#### 📅 Date Range")
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input(
+                "From",
+                value=datetime.now() - timedelta(days=7),
+                max_value=datetime.now(),
+                help="Start date for news collection"
+            )
+        with col2:
+            end_date = st.date_input(
+                "To",
+                value=datetime.now(),
+                max_value=datetime.now(),
+                help="End date for news collection"
+            )
+        
+        # Store in session state
+        st.session_state.date_range = (start_date, end_date)
+        
+        # Calculate days
+        days_diff = (end_date - start_date).days
+        if days_diff > 0:
+            st.caption(f"📊 Analyzing {days_diff} days of AI developments")
+        
+        st.markdown("---")
+        
+        # Company/Source Filter
+        st.markdown("#### 🏢 Focus on Companies")
+        
+        companies = st.multiselect(
+            "Select AI Companies to Track",
+            options=[
+                "OpenAI",
+                "Google/Gemini", 
+                "Anthropic/Claude",
+                "NVIDIA",
+                "Microsoft",
+                "Meta/LLaMA",
+                "Mistral AI",
+                "Cohere",
+                "Stability AI",
+                "Hugging Face",
+                "All Companies"
+            ],
+            default=["All Companies"],
+            help="Filter news and tools from specific companies"
+        )
+        
+        st.session_state.company_filter = companies
+        
+        st.markdown("---")
+        
         auto_refresh = st.checkbox("Auto-refresh daily", value=False)
         if auto_refresh:
             st.info("Reports will auto-generate at 6 AM")
         
         include_research = st.checkbox("Include research papers", value=True)
-        max_articles = st.slider("Max news articles", 5, 20, 10)
+        max_articles = st.slider("Max news articles", 5, 50, 20)
         
         st.markdown("---")
         
@@ -683,6 +1024,19 @@ def main():
         st.markdown("## 🤖 AI Intelligence Report Generator")
         st.markdown("Generate a comprehensive daily intelligence report powered by Gemini AI")
         
+        # Show active filters
+        date_range = st.session_state.get('date_range')
+        company_filter = st.session_state.get('company_filter', ['All Companies'])
+        
+        if date_range:
+            start_date, end_date = date_range
+            days = (end_date - start_date).days
+            st.info(f"📅 **Date Range:** {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')} ({days} days)")
+        
+        if company_filter and 'All Companies' not in company_filter:
+            companies_str = ", ".join(company_filter)
+            st.info(f"🏢 **Tracking Companies:** {companies_str}")
+        
         # Show custom prompt indicator if active
         if st.session_state.get('custom_prompt'):
             st.info(f"🎯 **Custom Focus Active:** {st.session_state.custom_prompt[:100]}{'...' if len(st.session_state.custom_prompt) > 100 else ''}")
@@ -752,23 +1106,41 @@ Generated: {report_data['timestamp']}
         if st.button("🔄 Fetch Latest News"):
             try:
                 agent = AIIntelligenceAgent(st.session_state.api_key)
-                news_articles = agent.collect_news()
+                date_range = st.session_state.get('date_range')
+                company_filter = st.session_state.get('company_filter', ['All Companies'])
                 
-                for article in news_articles:
-                    st.markdown(f"""
-                    <div class="news-card">
-                        <span class="badge badge-new">NEW</span>
-                        <span class="badge" style="background: #e0e7ff; color: #667eea;">{article['source']}</span>
-                        <h3 style="margin: 0.75rem 0;">{article['title']}</h3>
-                        <p style="color: #64748b; margin: 0.5rem 0;">{article['summary']}</p>
-                        <div style="margin-top: 1rem;">
-                            <a href="{article['link']}" target="_blank">Read more →</a>
-                            <span style="color: #94a3b8; margin-left: 1rem; font-size: 0.875rem;">
-                                📅 {article['published']}
-                            </span>
+                news_articles = agent.collect_news(
+                    max_articles=30,
+                    date_range=date_range,
+                    company_filter=company_filter
+                )
+                
+                if news_articles:
+                    st.success(f"✅ Found {len(news_articles)} articles")
+                    
+                    for article in news_articles:
+                        # Create company badges
+                        company_badges = ""
+                        for company in article.get('companies', ['General']):
+                            company_badges += f'<span class="badge" style="background: #e0e7ff; color: #667eea; margin-right: 0.25rem;">{company}</span>'
+                        
+                        st.markdown(f"""
+                        <div class="news-card">
+                            <span class="badge badge-new">NEW</span>
+                            <span class="badge" style="background: #f0fdf4; color: #16a34a;">{article['source']}</span>
+                            {company_badges}
+                            <h3 style="margin: 0.75rem 0;">{article['title']}</h3>
+                            <p style="color: #64748b; margin: 0.5rem 0;">{article['summary']}</p>
+                            <div style="margin-top: 1rem;">
+                                <a href="{article['link']}" target="_blank">Read more →</a>
+                                <span style="color: #94a3b8; margin-left: 1rem; font-size: 0.875rem;">
+                                    📅 {article['published']}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No articles found for the selected filters. Try adjusting your date range or company selection.")
                     
             except Exception as e:
                 st.error(f"Error fetching news: {str(e)}")
@@ -779,23 +1151,30 @@ Generated: {report_data['timestamp']}
         if st.button("🔍 Discover AI Tools"):
             try:
                 agent = AIIntelligenceAgent(st.session_state.api_key)
-                tools = agent.collect_tools()
+                company_filter = st.session_state.get('company_filter', ['All Companies'])
+                tools = agent.collect_tools(company_filter=company_filter)
                 
-                for tool in tools:
-                    st.markdown(f"""
-                    <div class="tool-card">
-                        <h3 style="margin: 0 0 0.5rem 0;">{tool['name']}</h3>
-                        <span class="badge" style="background: #ddd6fe; color: #7c3aed;">{tool['category']}</span>
-                        <span class="badge" style="background: #fef3c7; color: #d97706;">{tool['pricing']}</span>
-                        <p style="margin: 1rem 0; color: #334155;">{tool['description']}</p>
-                        <p style="margin: 0.5rem 0;">
-                            <strong>💡 Use Case:</strong> {tool['use_case']}
-                        </p>
-                        <a href="{tool['link']}" target="_blank" style="display: inline-block; margin-top: 0.75rem;">
-                            Explore tool →
-                        </a>
-                    </div>
-                    """, unsafe_allow_html=True)
+                if tools:
+                    st.success(f"✅ Found {len(tools)} tools from selected companies")
+                    
+                    for tool in tools:
+                        st.markdown(f"""
+                        <div class="tool-card">
+                            <h3 style="margin: 0 0 0.5rem 0;">{tool['name']}</h3>
+                            <span class="badge" style="background: #ddd6fe; color: #7c3aed;">{tool['category']}</span>
+                            <span class="badge" style="background: #fef3c7; color: #d97706;">{tool['pricing']}</span>
+                            <span class="badge" style="background: #dbeafe; color: #2563eb;">{tool['company']}</span>
+                            <p style="margin: 1rem 0; color: #334155;">{tool['description']}</p>
+                            <p style="margin: 0.5rem 0;">
+                                <strong>💡 Use Case:</strong> {tool['use_case']}
+                            </p>
+                            <a href="{tool['link']}" target="_blank" style="display: inline-block; margin-top: 0.75rem;">
+                                Explore tool →
+                            </a>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No tools found for the selected companies.")
                     
             except Exception as e:
                 st.error(f"Error fetching tools: {str(e)}")

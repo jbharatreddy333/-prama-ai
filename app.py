@@ -776,8 +776,8 @@ def render_header():
     """Render the main header"""
     st.markdown("""
     <div class="main-header">
-        <h1>🤖 AI Intelligence Agent</h1>
-        <p>Your Daily AI Technology Intelligence Report | Powered by Gemini</p>
+        <h1>🤖  Prama AI</h1>
+        <p>Your Daily AI News Technology updates & Intelligence Report</p>
     </div>
     """, unsafe_allow_html=True)
 

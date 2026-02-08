@@ -200,7 +200,11 @@ st.markdown("""
 if 'reports_history' not in st.session_state:
     st.session_state.reports_history = []
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = None
+    # Try to get API key from Streamlit secrets first
+    try:
+        st.session_state.api_key = st.secrets.get("GEMINI_API_KEY", None)
+    except:
+        st.session_state.api_key = None
 if 'last_generated' not in st.session_state:
     st.session_state.last_generated = None
 
@@ -419,22 +423,44 @@ def render_sidebar():
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
         
-        # API Key input
-        api_key = st.text_input(
-            "Gemini API Key",
-            type="password",
-            value=st.session_state.api_key or "",
-            help="Enter your Google Gemini API key"
-        )
+        # Check if API key is already loaded from secrets
+        api_key_from_secrets = False
+        try:
+            if st.secrets.get("GEMINI_API_KEY"):
+                api_key_from_secrets = True
+                st.success("✅ API Key loaded from secrets")
+        except:
+            pass
         
-        if api_key:
-            st.session_state.api_key = api_key
-            st.success("✅ API Key configured")
+        # API Key input (optional if already in secrets)
+        if not api_key_from_secrets:
+            api_key = st.text_input(
+                "Gemini API Key",
+                type="password",
+                value=st.session_state.api_key or "",
+                help="Enter your Google Gemini API key"
+            )
+            
+            if api_key:
+                st.session_state.api_key = api_key
+                st.success("✅ API Key configured")
+            else:
+                st.warning("⚠️ Please enter your Gemini API key")
+                st.markdown("""
+                [Get your API key](https://makersuite.google.com/app/apikey) from Google AI Studio
+                """)
         else:
-            st.warning("⚠️ Please enter your Gemini API key")
-            st.markdown("""
-            [Get your API key](https://makersuite.google.com/app/apikey) from Google AI Studio
-            """)
+            st.info("💡 Using API key from Streamlit secrets")
+            # Show option to override
+            with st.expander("🔧 Override API Key (Optional)"):
+                override_key = st.text_input(
+                    "Enter different API key",
+                    type="password",
+                    help="Override the API key from secrets"
+                )
+                if override_key:
+                    st.session_state.api_key = override_key
+                    st.success("✅ Using override API key")
         
         st.markdown("---")
         

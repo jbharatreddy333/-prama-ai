@@ -591,6 +591,14 @@ class AIIntelligenceAgent:
     def analyze_with_gemini(self, news_data, tools_data, research_data, custom_instructions=""):
         """Use Gemini to analyze and create intelligent report"""
         
+        # Convert datetime objects to strings for JSON serialization
+        news_data_serializable = []
+        for article in news_data:
+            article_copy = article.copy()
+            if 'date' in article_copy and article_copy['date']:
+                article_copy['date'] = article_copy['date'].strftime('%Y-%m-%d %H:%M:%S')
+            news_data_serializable.append(article_copy)
+        
         # Base prompt
         prompt = f"""
 You are an expert AI Technology Intelligence Analyst. Analyze the following data and create a comprehensive, insightful daily intelligence report.
@@ -598,7 +606,7 @@ You are an expert AI Technology Intelligence Analyst. Analyze the following data
 TODAY'S DATE: {datetime.now().strftime('%A, %B %d, %Y')}
 
 === NEWS ARTICLES ===
-{json.dumps(news_data, indent=2)}
+{json.dumps(news_data_serializable, indent=2)}
 
 === NEW AI TOOLS ===
 {json.dumps(tools_data, indent=2)}
@@ -664,6 +672,17 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
     
     def generate_daily_report(self):
         """Main orchestration method"""
+        
+        # Get filters from session state
+        date_range = st.session_state.get('date_range')
+        company_filter = st.session_state.get('company_filter', ['All Companies'])
+        
+        # Convert dates to strings for storage
+        date_range_str = None
+        if date_range:
+            start_date, end_date = date_range
+            date_range_str = f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+        
         report_data = {
             'timestamp': datetime.now().isoformat(),
             'date': datetime.now().strftime('%Y-%m-%d'),
@@ -672,14 +691,10 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
             'research': [],
             'analysis': '',
             'filters': {
-                'date_range': st.session_state.get('date_range'),
-                'companies': st.session_state.get('company_filter', ['All Companies'])
+                'date_range': date_range_str,
+                'companies': company_filter
             }
         }
-        
-        # Get filters from session state
-        date_range = st.session_state.get('date_range')
-        company_filter = st.session_state.get('company_filter', ['All Companies'])
         
         # Collect data with filters
         with st.spinner('🔍 Collecting AI news from selected companies...'):
@@ -1063,6 +1078,15 @@ def main():
                     
                     # Download button
                     st.markdown("---")
+                    
+                    # Prepare data for download (convert datetime objects)
+                    download_news = []
+                    for article in report_data['news']:
+                        article_copy = article.copy()
+                        if 'date' in article_copy and article_copy['date']:
+                            article_copy['date'] = article_copy['date'].strftime('%Y-%m-%d %H:%M:%S')
+                        download_news.append(article_copy)
+                    
                     report_text = f"""# AI Intelligence Report
 Generated: {report_data['timestamp']}
 
@@ -1072,7 +1096,7 @@ Generated: {report_data['timestamp']}
 ## Raw Data
 
 ### News Articles
-{json.dumps(report_data['news'], indent=2)}
+{json.dumps(download_news, indent=2)}
 
 ### AI Tools
 {json.dumps(report_data['tools'], indent=2)}

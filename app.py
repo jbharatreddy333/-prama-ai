@@ -644,6 +644,23 @@ class AIIntelligenceAgent:
     def analyze_with_gemini(self, news_data, models_data, research_data, custom_instructions=""):
         """Use Gemini to analyze and create intelligent report"""
         
+        # Convert datetime objects to strings for JSON serialization
+        def serialize_data(data):
+            """Recursively convert datetime objects to ISO format strings"""
+            if isinstance(data, list):
+                return [serialize_data(item) for item in data]
+            elif isinstance(data, dict):
+                return {key: serialize_data(value) for key, value in data.items()}
+            elif isinstance(data, datetime):
+                return data.isoformat()
+            else:
+                return data
+        
+        # Serialize all data
+        news_data_serialized = serialize_data(news_data)
+        models_data_serialized = serialize_data(models_data)
+        research_data_serialized = serialize_data(research_data)
+        
         # Base prompt
         prompt = f"""
 You are an expert AI Technology Intelligence Analyst. Analyze the following data and create a comprehensive, insightful daily intelligence report.
@@ -651,13 +668,13 @@ You are an expert AI Technology Intelligence Analyst. Analyze the following data
 TODAY'S DATE: {datetime.now().strftime('%A, %B %d, %Y')}
 
 === NEWS ARTICLES (BY CATEGORY) ===
-{json.dumps(news_data, indent=2)}
+{json.dumps(news_data_serialized, indent=2)}
 
 === LATEST AI MODEL DEVELOPMENTS ===
-{json.dumps(models_data, indent=2)}
+{json.dumps(models_data_serialized, indent=2)}
 
 === RESEARCH PAPERS ===
-{json.dumps(research_data, indent=2)}
+{json.dumps(research_data_serialized, indent=2)}
 """
         
         # Add custom instructions if provided
@@ -776,8 +793,8 @@ def render_header():
     """Render the main header"""
     st.markdown("""
     <div class="main-header">
-        <h1>🤖  Prama AI</h1>
-        <p>Your Daily AI News Technology updates & Intelligence Report</p>
+        <h1>🤖 AI Intelligence Agent</h1>
+        <p>Your Daily AI Technology Intelligence Report | Powered by Gemini</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1174,6 +1191,17 @@ def main():
                     
                     # Download button
                     st.markdown("---")
+                    
+                    # Serialize data for JSON output
+                    def serialize_for_json(obj):
+                        if isinstance(obj, datetime):
+                            return obj.isoformat()
+                        elif isinstance(obj, dict):
+                            return {k: serialize_for_json(v) for k, v in obj.items()}
+                        elif isinstance(obj, list):
+                            return [serialize_for_json(item) for item in obj]
+                        return obj
+                    
                     report_text = f"""# AI Intelligence Report
 Generated: {report_data['timestamp']}
 
@@ -1183,13 +1211,13 @@ Generated: {report_data['timestamp']}
 ## Raw Data
 
 ### News Articles
-{json.dumps(report_data['news'], indent=2)}
+{json.dumps(serialize_for_json(report_data['news']), indent=2)}
 
 ### Latest AI Models
-{json.dumps(report_data['models'], indent=2)}
+{json.dumps(serialize_for_json(report_data['models']), indent=2)}
 
 ### Research Papers
-{json.dumps(report_data['research'], indent=2)}
+{json.dumps(serialize_for_json(report_data['research']), indent=2)}
 """
                     st.download_button(
                         label="📥 Download Report",

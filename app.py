@@ -450,13 +450,12 @@ def render_sidebar():
                 [Get your API key](https://makersuite.google.com/app/apikey) from Google AI Studio
                 """)
         else:
-            st.info("💡 Using API key from Streamlit secrets")
-            # Show option to override
-            with st.expander("🔧 Override API Key (Optional)"):
+            # Show option to override (collapsed by default)
+            with st.expander("🔧 Use Different API Key"):
                 override_key = st.text_input(
-                    "Enter different API key",
+                    "Enter alternative API key",
                     type="password",
-                    help="Override the API key from secrets"
+                    help="Override the API key from secrets if needed"
                 )
                 if override_key:
                     st.session_state.api_key = override_key

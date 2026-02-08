@@ -313,9 +313,10 @@ class AIIntelligenceAgent:
         ]
         return papers
     
-    def analyze_with_gemini(self, news_data, tools_data, research_data):
+    def analyze_with_gemini(self, news_data, tools_data, research_data, custom_instructions=""):
         """Use Gemini to analyze and create intelligent report"""
         
+        # Base prompt
         prompt = f"""
 You are an expert AI Technology Intelligence Analyst. Analyze the following data and create a comprehensive, insightful daily intelligence report.
 
@@ -329,6 +330,19 @@ TODAY'S DATE: {datetime.now().strftime('%A, %B %d, %Y')}
 
 === RESEARCH PAPERS ===
 {json.dumps(research_data, indent=2)}
+"""
+        
+        # Add custom instructions if provided
+        if custom_instructions and custom_instructions.strip():
+            prompt += f"""
+
+=== CUSTOM FOCUS INSTRUCTIONS ===
+{custom_instructions}
+
+IMPORTANT: Pay special attention to the custom instructions above when analyzing and formatting your report.
+"""
+        
+        prompt += """
 
 Create a professional intelligence report with the following sections:
 
@@ -397,12 +411,20 @@ Be specific, insightful, and avoid generic statements. Focus on what's genuinely
             report_data['research'] = self.collect_research()
             time.sleep(1)
         
+        # Get custom prompt from session state
+        custom_prompt = st.session_state.get('custom_prompt', '')
+        
         # Analyze with Gemini
-        with st.spinner('🤖 Analyzing data with Gemini AI...'):
+        analysis_message = '🤖 Analyzing data with Gemini AI...'
+        if custom_prompt:
+            analysis_message = '🤖 Analyzing with your custom focus...'
+        
+        with st.spinner(analysis_message):
             report_data['analysis'] = self.analyze_with_gemini(
                 report_data['news'],
                 report_data['tools'],
-                report_data['research']
+                report_data['research'],
+                custom_prompt
             )
         
         return report_data
@@ -472,6 +494,65 @@ def render_sidebar():
         
         include_research = st.checkbox("Include research papers", value=True)
         max_articles = st.slider("Max news articles", 5, 20, 10)
+        
+        st.markdown("---")
+        
+        # Custom Prompt Section
+        st.markdown("### 💬 Custom Prompt")
+        
+        with st.expander("🎯 Customize Analysis Focus"):
+            st.markdown("""
+            Add custom instructions to focus the AI analysis on specific topics, 
+            industries, or perspectives that matter to you.
+            """)
+            
+            custom_prompt = st.text_area(
+                "Additional Instructions",
+                height=150,
+                placeholder="""Examples:
+- Focus on healthcare AI applications
+- Emphasize business implications over technical details
+- Highlight startup opportunities
+- Compare with competitors in the fintech space
+- Include security and privacy considerations""",
+                help="These instructions will be added to the analysis prompt"
+            )
+            
+            # Save to session state
+            if 'custom_prompt' not in st.session_state:
+                st.session_state.custom_prompt = ""
+            
+            if custom_prompt != st.session_state.custom_prompt:
+                st.session_state.custom_prompt = custom_prompt
+                if custom_prompt:
+                    st.success("✅ Custom instructions saved")
+            
+            # Quick templates
+            st.markdown("**Quick Templates:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🏥 Healthcare Focus", use_container_width=True):
+                    st.session_state.custom_prompt = "Focus on healthcare and medical AI applications. Highlight clinical use cases, FDA/regulatory considerations, and patient impact."
+                    st.rerun()
+                
+                if st.button("💼 Business/Enterprise", use_container_width=True):
+                    st.session_state.custom_prompt = "Emphasize business value, ROI, enterprise adoption, and practical implementation strategies. Focus on B2B opportunities."
+                    st.rerun()
+            
+            with col2:
+                if st.button("🔐 Security & Privacy", use_container_width=True):
+                    st.session_state.custom_prompt = "Highlight security implications, privacy concerns, data protection, and ethical considerations in AI developments."
+                    st.rerun()
+                
+                if st.button("🚀 Startups & Innovation", use_container_width=True):
+                    st.session_state.custom_prompt = "Focus on startup opportunities, innovation trends, funding news, and emerging market gaps."
+                    st.rerun()
+            
+            if st.session_state.custom_prompt:
+                if st.button("🗑️ Clear Custom Prompt", use_container_width=True):
+                    st.session_state.custom_prompt = ""
+                    st.rerun()
         
         st.markdown("---")
         
@@ -601,6 +682,10 @@ def main():
     with tab1:
         st.markdown("## 🤖 AI Intelligence Report Generator")
         st.markdown("Generate a comprehensive daily intelligence report powered by Gemini AI")
+        
+        # Show custom prompt indicator if active
+        if st.session_state.get('custom_prompt'):
+            st.info(f"🎯 **Custom Focus Active:** {st.session_state.custom_prompt[:100]}{'...' if len(st.session_state.custom_prompt) > 100 else ''}")
         
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
